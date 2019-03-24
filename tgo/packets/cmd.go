@@ -5,6 +5,8 @@ import "fmt"
 type CMDPacket struct {
 	FixedHeader
 	CMD       uint16
+	TokenFlag bool // token标识 true表示存在token false为不存在
+	Token     string // token字符串
 	Payload   []byte // 消息内容
 }
 
@@ -16,7 +18,7 @@ func NewCMDPacketWithHeader(fh FixedHeader) *CMDPacket {
 
 func NewCMDPacket(cmd uint16, payload []byte) *CMDPacket {
 
-	return &CMDPacket{ CMD: cmd, Payload: payload,FixedHeader:FixedHeader{PacketType:CMD}}
+	return &CMDPacket{CMD: cmd, Payload: payload, FixedHeader: FixedHeader{PacketType: CMD}}
 }
 
 func (c *CMDPacket) GetFixedHeader() FixedHeader {
