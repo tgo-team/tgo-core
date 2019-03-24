@@ -29,6 +29,6 @@ func (c *CMDPacket) GetFixedHeader() FixedHeader {
 func (c *CMDPacket) String() string {
 	str := fmt.Sprintf("%s", c.FixedHeader)
 	str += " "
-	str += fmt.Sprintf("CMD: %d Payload:  %s", c.CMD, string(c.Payload))
+	str += fmt.Sprintf("CMD: %d TokenFlag: %v Token: %v Payload:  %s", c.CMD,c.TokenFlag,c.Token, string(c.Payload))
 	return str
 }
