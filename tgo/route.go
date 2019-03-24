@@ -106,6 +106,11 @@ func (m *MContext) Packet() packets.Packet {
 	return m.connContext.Packet
 }
 
+// CMDPacket 获取CMD包
+func (m *MContext) CMDPacket() *packets.CMDPacket {
+	return m.connContext.Packet.(*packets.CMDPacket)
+}
+
 func (m *MContext) PacketType() packets.PacketType {
 
 	return m.Packet().GetFixedHeader().PacketType
