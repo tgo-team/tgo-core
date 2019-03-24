@@ -39,11 +39,21 @@ func (r *Route) Serve(context *MContext) {
 	r.handle(context)
 
 	if context.Packet()!=nil && !context.IsAborted(){
+		// 包类型匹配
 		packetType := context.Packet().GetFixedHeader().PacketType
 		typePath := fmt.Sprintf("type:%d",packetType)
 		matchFunc := r.matchHandlerMap[typePath]
 		if matchFunc!=nil {
 			matchFunc(context)
+		}
+		// cmd类型匹配
+		if packetType == packets.CMD {
+			cmd := context.Packet().(*packets.CMDPacket).CMD
+			cmdPath := fmt.Sprintf("cmd:%d",cmd)
+			matchFunc := r.matchHandlerMap[cmdPath]
+			if matchFunc!=nil {
+				matchFunc(context)
+			}
 		}
 	}
 
