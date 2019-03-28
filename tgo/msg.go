@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/tgo-team/tgo-core/tgo/packets"
+	"time"
 )
 
 // --------- message -------------
@@ -12,14 +13,16 @@ import (
 type Msg struct {
 	MessageID uint64 // 消息唯一编号
 	From      uint64 // 发送者ID
+	MsgTime time.Time // 消息时间
 	Payload   []byte // 消息内容
 }
 
 func NewMsg(messageID uint64,from uint64, payload []byte) *Msg {
 
 	return &Msg{
-		MessageID: messageID,
 		From: from,
+		MessageID: messageID,
+		MsgTime:time.Now(),
 		Payload:   payload,
 	}
 }
@@ -33,6 +36,7 @@ func (m *Msg) MarshalBinary() (data []byte, err error) {
 	var body bytes.Buffer
 	body.Write(packets.EncodeUint64(m.From))
 	body.Write(packets.EncodeUint64(m.MessageID))
+	body.Write(packets.EncodeUint32(uint32(m.MsgTime.Unix())))
 	body.Write(m.Payload)
 	return body.Bytes(),nil
 }
@@ -40,7 +44,8 @@ func (m *Msg) MarshalBinary() (data []byte, err error) {
 func (m *Msg) UnmarshalBinary(data []byte) error {
 	m.From = binary.BigEndian.Uint64(data[:8])
 	m.MessageID = binary.BigEndian.Uint64(data[8:16])
-	m.Payload = data[16:]
+	m.MsgTime = time.Unix(int64( binary.BigEndian.Uint32(data[16:20])),0)
+	m.Payload = data[20:]
 	return nil
 }
 

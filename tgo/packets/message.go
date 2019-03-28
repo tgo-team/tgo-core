@@ -1,10 +1,14 @@
 package packets
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 type MessagePacket struct {
 	FixedHeader
 	ChannelID uint64 // 管道ID
+	Timestamp int64  // 消息时间
 	MessageID uint64 // 消息唯一编号
 	Payload   []byte // 消息内容
 }
@@ -13,6 +17,7 @@ func NewMessagePacket(messageID uint64, channelID uint64, payload []byte) *Messa
 	return &MessagePacket{
 		ChannelID:   channelID,
 		MessageID:   messageID,
+		Timestamp: time.Now().Unix(),
 		Payload:     payload,
 		FixedHeader: FixedHeader{PacketType: Message, Qos: 1},
 	}

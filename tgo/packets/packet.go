@@ -89,6 +89,12 @@ func DecodeUint16(b io.Reader) uint16 {
 	return binary.BigEndian.Uint16(num)
 }
 
+func DecodeUint32(b io.Reader) uint32 {
+	num := make([]byte, 4)
+	b.Read(num)
+	return binary.BigEndian.Uint32(num)
+}
+
 func DecodeUint64(b io.Reader) uint64 {
 	num := make([]byte, 8)
 	b.Read(num)
@@ -98,6 +104,12 @@ func DecodeUint64(b io.Reader) uint64 {
 func EncodeUint16(num uint16) []byte {
 	bytes := make([]byte, 2)
 	binary.BigEndian.PutUint16(bytes, num)
+	return bytes
+}
+
+func EncodeUint32(num uint32) []byte {
+	bytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(bytes, num)
 	return bytes
 }
 
