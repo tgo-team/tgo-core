@@ -42,7 +42,6 @@ func NewChannel(channelID uint64, channelType ChannelType, ctx *Context) *Channe
 	//c.initPQ()
 	return c
 }
-
 func (c *Channel) initPQ() {
 	pqSize := int(math.Max(1, float64(c.Ctx.TGO.GetOpts().MemQueueSize)/10))
 
@@ -83,22 +82,40 @@ func (c *Channel) DeliveryMsg(msgCtx *MsgContext)  {
 		if clientID == msgCtx.Msg().From { // 不发送给自己
 			continue
 		}
-		online := IsOnline(clientID)
-		if online {
-			conn := c.Ctx.TGO.ConnManager.GetConn(clientID)
-			if conn!=nil {
-				msgPacket := packets.NewMessagePacket(msgCtx.msg.MessageID,msgCtx.channelID,msgCtx.msg.Payload)
-				msgPacket.From = msgCtx.Msg().From
-				msgPacketData,err := c.Ctx.TGO.GetOpts().Pro.EncodePacket(msgPacket)
-				if err!=nil {
-					c.Error("编码消息[%d]数据失败！-> %v",msgCtx.msg.MessageID,err)
-					continue
+		if clientID == c.ChannelID && c.ChannelType == ChannelTypePerson { // 如果Channel是当前用户的将直接发送消息给用户
+			online := IsOnline(clientID)
+			if online {
+				conn := c.Ctx.TGO.ConnManager.GetConn(clientID)
+				if conn!=nil {
+					msgPacket := packets.NewMessagePacket(msgCtx.msg.MessageID,msgCtx.channelID,msgCtx.msg.Payload)
+					msgPacket.From = msgCtx.Msg().From
+					msgPacketData,err := c.Ctx.TGO.GetOpts().Pro.EncodePacket(msgPacket)
+					if err!=nil {
+						c.Error("编码消息[%d]数据失败！-> %v",msgCtx.msg.MessageID,err)
+						continue
+					}
+					_,err = conn.Write(msgPacketData)
+					if err!=nil {
+						c.Error("写入消息[%d]数据失败！-> %v",msgCtx.msg.MessageID,err)
+						continue
+					}
 				}
-				_,err = conn.Write(msgPacketData)
-				if err!=nil {
-					c.Error("写入消息[%d]数据失败！-> %v",msgCtx.msg.MessageID,err)
-					continue
-				}
+			}
+		}else{ // 如果Channel不是当前用户的，将消息存到用户对应的管道内
+			personChannel,err := c.Ctx.TGO.GetChannel(clientID)
+			if err!=nil {
+				c.Error("获取Channel[%d]失败！-> %v",clientID,err)
+				continue
+			}
+			if personChannel==nil {
+				c.Warn("没有查询到通道Channel[%d]！",clientID)
+				continue
+			}
+			err = personChannel.PutMsg(msgCtx.Msg())
+			//TODO PutMsg 发生错误 怎么处理 (暂时不考虑，后面可以进行重新同步之类的反正消息是收到了存储到了管道内，只是没下发到用户的管道内)
+			// TODO 出现这种情况会出现客户端丢消息情况
+			if err!=nil {
+				c.Warn("将消息[%d]存放到用户[%d]的管道[%d]失败！-> %v",msgCtx.Msg().MessageID,clientID,msgCtx.ChannelID(),err)
 			}
 		}
 	}

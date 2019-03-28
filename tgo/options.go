@@ -21,6 +21,7 @@ type Options struct {
 	Pro                  Protocol      // 协议
 	MemQueueSize         int64         // 内存队列的chan大小，值表示内存中能堆积多少条消息
 	MsgTimeout           time.Duration // 消息发送超时时间
+	TestOn               bool          // 是否开启测试模式
 }
 
 func NewOptions() *Options {
@@ -39,6 +40,7 @@ func NewOptions() *Options {
 		HTTPAddress:          "0.0.0.0:6667",
 		HTTPSAddress:         "0.0.0.0:6443",
 		MaxHeartbeatInterval: 60 * time.Second,
+		TestOn:               false,
 		Pro:                  NewProtocol("mqtt-im"),
 	}
 }
