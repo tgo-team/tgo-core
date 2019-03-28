@@ -36,7 +36,7 @@ func (m *Msg) MarshalBinary() (data []byte, err error) {
 	var body bytes.Buffer
 	body.Write(packets.EncodeUint64(m.From))
 	body.Write(packets.EncodeUint64(m.MessageID))
-	body.Write(packets.EncodeUint32(uint32(m.MsgTime.Unix())))
+	body.Write(packets.EncodeUint64(uint64(m.MsgTime.UnixNano())))
 	body.Write(m.Payload)
 	return body.Bytes(),nil
 }
@@ -44,8 +44,8 @@ func (m *Msg) MarshalBinary() (data []byte, err error) {
 func (m *Msg) UnmarshalBinary(data []byte) error {
 	m.From = binary.BigEndian.Uint64(data[:8])
 	m.MessageID = binary.BigEndian.Uint64(data[8:16])
-	m.MsgTime = time.Unix(int64( binary.BigEndian.Uint32(data[16:20])),0)
-	m.Payload = data[20:]
+	m.MsgTime = time.Unix(int64( binary.BigEndian.Uint64(data[16:24])),0)
+	m.Payload = data[24:]
 	return nil
 }
 
