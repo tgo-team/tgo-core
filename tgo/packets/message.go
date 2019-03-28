@@ -8,7 +8,7 @@ import (
 type MessagePacket struct {
 	FixedHeader
 	ChannelID uint64 // 管道ID
-	Timestamp int64  // 消息时间
+	Timestamp int64  // 消息时间 到毫秒
 	MessageID uint64 // 消息唯一编号
 	Payload   []byte // 消息内容
 }

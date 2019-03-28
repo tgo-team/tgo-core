@@ -13,7 +13,7 @@ import (
 type Msg struct {
 	MessageID uint64 // 消息唯一编号
 	From      uint64 // 发送者ID
-	MsgTime time.Time // 消息时间
+	Timestamp int64  // 消息时间 到毫秒
 	Payload   []byte // 消息内容
 }
 
@@ -22,7 +22,7 @@ func NewMsg(messageID uint64,from uint64, payload []byte) *Msg {
 	return &Msg{
 		From: from,
 		MessageID: messageID,
-		MsgTime:time.Now(),
+		Timestamp:time.Now().UnixNano()/1000000,
 		Payload:   payload,
 	}
 }
@@ -36,7 +36,7 @@ func (m *Msg) MarshalBinary() (data []byte, err error) {
 	var body bytes.Buffer
 	body.Write(packets.EncodeUint64(m.From))
 	body.Write(packets.EncodeUint64(m.MessageID))
-	body.Write(packets.EncodeUint64(uint64(m.MsgTime.UnixNano())))
+	body.Write(packets.EncodeUint64(uint64(m.Timestamp)))
 	body.Write(m.Payload)
 	return body.Bytes(),nil
 }
@@ -44,7 +44,7 @@ func (m *Msg) MarshalBinary() (data []byte, err error) {
 func (m *Msg) UnmarshalBinary(data []byte) error {
 	m.From = binary.BigEndian.Uint64(data[:8])
 	m.MessageID = binary.BigEndian.Uint64(data[8:16])
-	m.MsgTime = time.Unix(int64( binary.BigEndian.Uint64(data[16:24])),0)
+	m.Timestamp = int64( binary.BigEndian.Uint64(data[16:24]))
 	m.Payload = data[24:]
 	return nil
 }
