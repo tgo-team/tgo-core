@@ -76,6 +76,10 @@ func (t *TGO) Start() error {
 
 func (t *TGO) Stop() error {
 	close(t.exitChan)
+	close(t.AcceptPacketChan)
+	close(t.AcceptAuthenticatedChan)
+	close(t.AcceptConnChan)
+	close(t.AcceptConnExitChan)
 	for _, server := range t.Servers {
 		err := server.Stop()
 		if err != nil {
@@ -110,8 +114,10 @@ func (t *TGO) msgLoop() {
 			}
 			t.AcceptPacketChan <- NewPacketContext(packet, conn)
 		case authenticatedContext := <-t.AcceptAuthenticatedChan: // 连接已认证
-			t.Debug("连接[%v]认证成功！",authenticatedContext.Conn)
-			t.ConnManager.AddConn(authenticatedContext.ClientID, authenticatedContext.Conn)
+			if authenticatedContext != nil {
+				t.Debug("连接[%v]认证成功！", authenticatedContext.Conn)
+				t.ConnManager.AddConn(authenticatedContext.ClientID, authenticatedContext.Conn)
+			}
 		case packetContext := <-t.AcceptPacketChan: // 接受到包请求
 			if packetContext != nil {
 				t.Debug("收到[%v]的包 ->  %v", packetContext.Conn, packetContext.Packet)
@@ -186,4 +192,12 @@ func (t *TGO) GetChannel(channelID uint64) (*Channel, error) {
 		}
 	}
 	return channel, nil
+}
+
+// pushOfflineMsg 推送离线消息
+func (t *TGO) pushOfflineMsg(clientID uint64,conn Conn)  {
+	channel,err := t.GetChannel(clientID)
+	if err!=nil {
+		t.Error("查询连接[%v]的Channel失败！-> %v",conn,err)
+	}
 }
