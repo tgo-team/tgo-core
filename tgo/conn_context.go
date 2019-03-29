@@ -4,13 +4,13 @@ import (
 	"github.com/tgo-team/tgo-core/tgo/packets"
 )
 
-type ConnContext struct {
+type PacketContext struct {
 	Packet packets.Packet
 	Conn Conn
 }
 
-func NewConnContext(packet packets.Packet,conn Conn) *ConnContext {
-	return &ConnContext{
+func NewPacketContext(packet packets.Packet,conn Conn) *PacketContext {
+	return &PacketContext{
 		Packet: packet,
 		Conn:conn,
 	}

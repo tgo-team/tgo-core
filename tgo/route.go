@@ -71,7 +71,7 @@ func (r *Route) Match(match string, handler HandlerFunc) {
 const abortIndex int8 = math.MaxInt8 / 2
 
 type MContext struct {
-	connContext *ConnContext
+	packetContext *PacketContext
 	index       int8
 	handlers    HandlersChain
 	sync.RWMutex
@@ -84,15 +84,15 @@ var pool = sync.Pool{
 	},
 }
 
-func GetMContext(connContext *ConnContext) *MContext {
+func GetMContext(packetContext *PacketContext) *MContext {
 	mContext := pool.Get().(*MContext)
 	mContext.reset()
-	mContext.connContext = connContext
+	mContext.packetContext = packetContext
 	return mContext
 }
 
 func allocateContext() *MContext {
-	return &MContext{index: -1, handlers: nil, connContext: nil, RWMutex: sync.RWMutex{}}
+	return &MContext{index: -1, handlers: nil, packetContext: nil, RWMutex: sync.RWMutex{}}
 }
 
 func (m *MContext) Next() {
@@ -103,12 +103,12 @@ func (m *MContext) Next() {
 }
 
 func (m *MContext) Packet() packets.Packet {
-	return m.connContext.Packet
+	return m.packetContext.Packet
 }
 
 // CMDPacket 获取CMD包
 func (m *MContext) CMDPacket() *packets.CMDPacket {
-	return m.connContext.Packet.(*packets.CMDPacket)
+	return m.packetContext.Packet.(*packets.CMDPacket)
 }
 
 func (m *MContext) PacketType() packets.PacketType {
@@ -117,7 +117,7 @@ func (m *MContext) PacketType() packets.PacketType {
 }
 
 func (m *MContext) Conn() Conn {
-	return m.connContext.Conn
+	return m.packetContext.Conn
 }
 
 func (m *MContext) Storage() Storage {
@@ -126,7 +126,7 @@ func (m *MContext) Storage() Storage {
 
 
 func (m *MContext) Msg() *Msg {
-	messagePacket, ok := m.connContext.Packet.(*packets.MessagePacket)
+	messagePacket, ok := m.packetContext.Packet.(*packets.MessagePacket)
 	if ok {
 		msg := NewMsg(messagePacket.MessageID,messagePacket.From,messagePacket.Payload)
 		msg.MessageID = messagePacket.MessageID
@@ -166,7 +166,7 @@ func (m *MContext) reset() {
 	m.Lock()
 	defer m.Unlock()
 	m.index = -1
-	m.connContext = nil
+	m.packetContext = nil
 	m.handlers = nil
 }
 

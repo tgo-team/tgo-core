@@ -6,7 +6,7 @@ import (
 
 type TGO struct {
 	Servers []Server
-	opts   atomic.Value // options
+	opts    atomic.Value // options
 	*Route
 	exitChan        chan int
 	waitGroup       WaitGroupWrapper
@@ -14,8 +14,9 @@ type TGO struct {
 	monitor         Monitor // Monitor
 	channelMap      map[uint64]*Channel
 	memoryMsgChan   chan *MsgContext
-	ConnContextChan chan *ConnContext
-	ConnManager *connManager
+	AcceptConnChan  chan Conn // 接受连接
+	AcceptPacketChan chan *PacketContext
+	ConnManager     *connManager
 }
 
 func New(opts *Options) *TGO {
@@ -23,8 +24,9 @@ func New(opts *Options) *TGO {
 		exitChan:        make(chan int, 0),
 		channelMap:      map[uint64]*Channel{},
 		memoryMsgChan:   make(chan *MsgContext, opts.MemQueueSize),
-		ConnContextChan: make(chan *ConnContext, 1024),
-		ConnManager: newConnManager(),
+		AcceptPacketChan: make(chan *PacketContext, 1024),
+		AcceptConnChan : make(chan Conn,1024),
+		ConnManager:     newConnManager(),
 	}
 	if opts.Log == nil {
 		opts.Log = NewLog(opts.LogLevel)
@@ -58,9 +60,9 @@ func New(opts *Options) *TGO {
 }
 
 func (t *TGO) Start() error {
-	for _,server :=range t.Servers {
+	for _, server := range t.Servers {
 		err := server.Start()
-		if err!=nil {
+		if err != nil {
 			return err
 		}
 	}
@@ -69,9 +71,9 @@ func (t *TGO) Start() error {
 
 func (t *TGO) Stop() error {
 	close(t.exitChan)
-	for _,server :=range t.Servers {
+	for _, server := range t.Servers {
 		err := server.Stop()
-		if err!=nil {
+		if err != nil {
 			return err
 		}
 	}
@@ -91,22 +93,30 @@ func (t *TGO) GetOpts() *Options {
 func (t *TGO) msgLoop() {
 	for {
 		select {
-		case connContext := <-t.ConnContextChan:
-			if connContext != nil {
-				t.Info("收到消息 -> %v", connContext)
-				t.Serve(GetMContext(connContext))
+		case conn :=<- t.AcceptConnChan:// 接受到连接请求
+			packet, err := t.GetOpts().Pro.DecodePacket(conn)
+			if err != nil {
+				t.Error("解析连接数据失败！-> %v", err)
+				t.exitChan <- 1
+				return
+			}
+			t.AcceptPacketChan <- NewPacketContext(packet,conn)
+		case packetContext := <-t.AcceptPacketChan: // 接受到包请求
+			if packetContext != nil {
+				t.Debug("收到包 -> %v", packetContext.Packet)
+				t.Serve(GetMContext(packetContext))
 			} else {
 				t.Warn("Receive the message is nil")
 			}
-		case msgContext := <-t.Storage.StorageMsgChan():
-			if msgContext!=nil {
+		case msgContext := <-t.Storage.StorageMsgChan(): // 消息存储成功
+			if msgContext != nil {
 				channel, err := t.GetChannel(msgContext.ChannelID())
 				if err != nil {
-					t.Error("获取管道[%d]失败！-> %v",msgContext.ChannelID(),err)
+					t.Error("获取管道[%d]失败！-> %v", msgContext.ChannelID(), err)
 					continue
 				}
-				if channel==nil {
-					t.Error("管道[%d]不存在！",msgContext.ChannelID())
+				if channel == nil {
+					t.Error("管道[%d]不存在！", msgContext.ChannelID())
 					continue
 				}
 				t.waitGroup.Add(1)
@@ -116,14 +126,14 @@ func (t *TGO) msgLoop() {
 				}(msgContext)
 			}
 		case msgContext := <-t.memoryMsgChan:
-			if msgContext!=nil {
+			if msgContext != nil {
 				channel, err := t.GetChannel(msgContext.ChannelID())
 				if err != nil {
-					t.Error("获取管道[%d]失败！-> %v",msgContext.ChannelID(),err)
+					t.Error("获取管道[%d]失败！-> %v", msgContext.ChannelID(), err)
 					continue
 				}
-				if channel==nil {
-					t.Error("管道[%d]不存在！",msgContext.ChannelID())
+				if channel == nil {
+					t.Error("管道[%d]不存在！", msgContext.ChannelID())
 					continue
 				}
 
@@ -158,5 +168,3 @@ func (t *TGO) GetChannel(channelID uint64) (*Channel, error) {
 	}
 	return channel, nil
 }
-
-
