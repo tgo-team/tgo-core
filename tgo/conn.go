@@ -12,6 +12,7 @@ type Conn interface {
 
 //StatefulConn 有状态连接
 type StatefulConn interface {
+	Conn
 	StartIOLoop()
 	SetAuth(auth bool)
 	IsAuth() bool
