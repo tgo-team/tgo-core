@@ -196,8 +196,8 @@ func (t *TGO) GetChannel(channelID uint64) (*Channel, error) {
 
 // pushOfflineMsg 推送离线消息
 func (t *TGO) pushOfflineMsg(clientID uint64,conn Conn)  {
-	channel,err := t.GetChannel(clientID)
-	if err!=nil {
-		t.Error("查询连接[%v]的Channel失败！-> %v",conn,err)
-	}
+	//channel,err := t.GetChannel(clientID)
+	//if err!=nil {
+	//	t.Error("查询连接[%v]的Channel失败！-> %v",conn,err)
+	//}
 }
