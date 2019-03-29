@@ -8,25 +8,27 @@ type TGO struct {
 	Servers []Server
 	opts    atomic.Value // options
 	*Route
-	exitChan        chan int
-	waitGroup       WaitGroupWrapper
-	Storage         Storage // storage msg
-	monitor         Monitor // Monitor
-	channelMap      map[uint64]*Channel
-	memoryMsgChan   chan *MsgContext
-	AcceptConnChan  chan Conn // 接受连接
-	AcceptPacketChan chan *PacketContext
-	ConnManager     *connManager
+	exitChan           chan int
+	waitGroup          WaitGroupWrapper
+	Storage            Storage // storage msg
+	monitor            Monitor // Monitor
+	channelMap         map[uint64]*Channel
+	memoryMsgChan      chan *MsgContext
+	AcceptConnChan     chan Conn // 接受连接
+	AcceptPacketChan   chan *PacketContext
+	AcceptConnExitChan chan Conn // 接受连接退出
+	ConnManager        *connManager
 }
 
 func New(opts *Options) *TGO {
 	tg := &TGO{
-		exitChan:        make(chan int, 0),
-		channelMap:      map[uint64]*Channel{},
-		memoryMsgChan:   make(chan *MsgContext, opts.MemQueueSize),
-		AcceptPacketChan: make(chan *PacketContext, 1024),
-		AcceptConnChan : make(chan Conn,1024),
-		ConnManager:     newConnManager(),
+		exitChan:           make(chan int, 0),
+		channelMap:         map[uint64]*Channel{},
+		memoryMsgChan:      make(chan *MsgContext, opts.MemQueueSize),
+		AcceptPacketChan:   make(chan *PacketContext, 1024),
+		AcceptConnChan:     make(chan Conn, 1024),
+		AcceptConnExitChan: make(chan Conn, 1024),
+		ConnManager:        newConnManager(),
 	}
 	if opts.Log == nil {
 		opts.Log = NewLog(opts.LogLevel)
@@ -93,17 +95,16 @@ func (t *TGO) GetOpts() *Options {
 func (t *TGO) msgLoop() {
 	for {
 		select {
-		case conn :=<- t.AcceptConnChan:// 接受到连接请求
+		case conn := <-t.AcceptConnChan: // 接受到连接请求
 			packet, err := t.GetOpts().Pro.DecodePacket(conn)
 			if err != nil {
 				t.Error("解析连接数据失败！-> %v", err)
-				t.exitChan <- 1
-				return
+				continue
 			}
-			t.AcceptPacketChan <- NewPacketContext(packet,conn)
+			t.AcceptPacketChan <- NewPacketContext(packet, conn)
 		case packetContext := <-t.AcceptPacketChan: // 接受到包请求
 			if packetContext != nil {
-				t.Debug("收到包 -> %v", packetContext.Packet)
+				t.Debug("收到[%v]的包 ->  %v", packetContext.Conn, packetContext.Packet)
 				t.Serve(GetMContext(packetContext))
 			} else {
 				t.Warn("Receive the message is nil")
@@ -143,8 +144,15 @@ func (t *TGO) msgLoop() {
 					t.waitGroup.Done()
 				}(msgContext)
 			}
+		case conn := <-t.AcceptConnExitChan: // 连接退出
+			if conn != nil {
+				t.Debug("连接[%v]退出！", conn)
+				cn, ok := conn.(StatefulConn)
+				if ok {
+					t.ConnManager.RemoveConn(cn.GetID())
+				}
 
-
+			}
 		case <-t.exitChan:
 			goto exit
 
