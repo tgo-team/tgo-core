@@ -1,6 +1,7 @@
 package tgo
 
 import (
+	"github.com/tgo-team/tgo-core/tgo/packets"
 	"sync/atomic"
 )
 
@@ -8,27 +9,29 @@ type TGO struct {
 	Servers []Server
 	opts    atomic.Value // options
 	*Route
-	exitChan           chan int
-	waitGroup          WaitGroupWrapper
-	Storage            Storage // storage msg
-	monitor            Monitor // Monitor
-	channelMap         map[uint64]*Channel
-	memoryMsgChan      chan *MsgContext
-	AcceptConnChan     chan Conn // 接受连接
-	AcceptPacketChan   chan *PacketContext
-	AcceptConnExitChan chan Conn // 接受连接退出
-	ConnManager        *connManager
+	exitChan                chan int
+	waitGroup               WaitGroupWrapper
+	Storage                 Storage // storage msg
+	monitor                 Monitor // Monitor
+	channelMap              map[uint64]*Channel
+	memoryMsgChan           chan *MsgContext
+	AcceptConnChan          chan Conn // 接受连接
+	AcceptPacketChan        chan *PacketContext
+	AcceptConnExitChan      chan Conn                  // 接受连接退出
+	AcceptAuthenticatedChan chan *AuthenticatedContext // 接受已认证了的conn
+	ConnManager             *connManager
 }
 
 func New(opts *Options) *TGO {
 	tg := &TGO{
-		exitChan:           make(chan int, 0),
-		channelMap:         map[uint64]*Channel{},
-		memoryMsgChan:      make(chan *MsgContext, opts.MemQueueSize),
-		AcceptPacketChan:   make(chan *PacketContext, 1024),
-		AcceptConnChan:     make(chan Conn, 1024),
-		AcceptConnExitChan: make(chan Conn, 1024),
-		ConnManager:        newConnManager(),
+		exitChan:                make(chan int, 0),
+		channelMap:              map[uint64]*Channel{},
+		memoryMsgChan:           make(chan *MsgContext, opts.MemQueueSize),
+		AcceptPacketChan:        make(chan *PacketContext, 1024),
+		AcceptConnChan:          make(chan Conn, 1024),
+		AcceptConnExitChan:      make(chan Conn, 1024),
+		AcceptAuthenticatedChan: make(chan *AuthenticatedContext, 1024),
+		ConnManager:             newConnManager(),
 	}
 	if opts.Log == nil {
 		opts.Log = NewLog(opts.LogLevel)
@@ -101,7 +104,13 @@ func (t *TGO) msgLoop() {
 				t.Error("解析连接数据失败！-> %v", err)
 				continue
 			}
+			if packet.GetFixedHeader().PacketType != packets.Connect {
+				t.Error("包类型[%d]错误！发起连接后的第一个包必须为Connect包！", packet.GetFixedHeader().PacketType)
+				continue
+			}
 			t.AcceptPacketChan <- NewPacketContext(packet, conn)
+		case authenticatedContext := <-t.AcceptAuthenticatedChan: // 连接已认证
+			t.ConnManager.AddConn(authenticatedContext.ClientID, authenticatedContext.Conn)
 		case packetContext := <-t.AcceptPacketChan: // 接受到包请求
 			if packetContext != nil {
 				t.Debug("收到[%v]的包 ->  %v", packetContext.Conn, packetContext.Packet)
@@ -162,6 +171,7 @@ exit:
 	t.Debug("停止收取消息。")
 }
 
+// GetChannel 通过[channelID]获取管道信息
 func (t *TGO) GetChannel(channelID uint64) (*Channel, error) {
 	channel, ok := t.channelMap[channelID]
 	var err error
