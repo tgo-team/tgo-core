@@ -110,6 +110,7 @@ func (t *TGO) msgLoop() {
 			}
 			t.AcceptPacketChan <- NewPacketContext(packet, conn)
 		case authenticatedContext := <-t.AcceptAuthenticatedChan: // 连接已认证
+			t.Debug("连接[%v]认证成功！",authenticatedContext.Conn)
 			t.ConnManager.AddConn(authenticatedContext.ClientID, authenticatedContext.Conn)
 		case packetContext := <-t.AcceptPacketChan: // 接受到包请求
 			if packetContext != nil {
