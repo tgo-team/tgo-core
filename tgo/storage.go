@@ -33,8 +33,8 @@ type Storage interface {
 	StorageMsgChan() chan *MsgContext                                                    // 读取消息
 	GetMsgWithChannel(channelID uint64, pageIndex int64, pageSize int64) ([]*Msg, error) // 获取管道内的消息集合(分页查询)
 	// ------ 管道操作 -----
-	AddChannel(c *Channel) error                     // 保存管道
-	GetChannel(channelID uint64) (*Channel, error)   // 获取管道
+	AddChannel(c *ChannelModel) error                     // 保存管道
+	GetChannel(channelID uint64) (*ChannelModel, error)   // 获取管道
 	Bind(clientID uint64, channelID uint64) error    // 绑定消费者和通道的关系
 	GetClientIDs(channelID uint64) ([]uint64, error) // 获取所属管道所有的客户端
 	// ------ 客户端相关 -----

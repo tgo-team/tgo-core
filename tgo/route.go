@@ -157,7 +157,7 @@ func (m *MContext) ReplyPacket(packet packets.Packet)  {
 	return
 }
 
-func (m *MContext) GetChannel(channelID uint64) (*Channel,error) {
+func (m *MContext) GetChannel(channelID uint64) (Channel,error) {
 
 	return m.Ctx.TGO.GetChannel(channelID)
 }

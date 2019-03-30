@@ -2,6 +2,7 @@ package tgo
 
 import (
 	"github.com/tgo-team/tgo-core/tgo/packets"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -14,19 +15,20 @@ type TGO struct {
 	waitGroup               WaitGroupWrapper
 	Storage                 Storage // storage msg
 	monitor                 Monitor // Monitor
-	channelMap              map[uint64]*Channel
+	channelMap              map[uint64]Channel
 	memoryMsgChan           chan *MsgContext
 	AcceptConnChan          chan Conn // 接受连接
 	AcceptPacketChan        chan *PacketContext
 	AcceptConnExitChan      chan Conn                  // 接受连接退出
 	AcceptAuthenticatedChan chan *AuthenticatedContext // 接受已认证了的conn
 	ConnManager             *connManager
+	sync.RWMutex
 }
 
 func New(opts *Options) *TGO {
 	tg := &TGO{
 		exitChan:                make(chan int, 0),
-		channelMap:              map[uint64]*Channel{},
+		channelMap:              map[uint64]Channel{},
 		memoryMsgChan:           make(chan *MsgContext, opts.MemQueueSize),
 		AcceptPacketChan:        make(chan *PacketContext, 1024),
 		AcceptConnChan:          make(chan Conn, 1024),
@@ -119,7 +121,17 @@ func (t *TGO) msgLoop() {
 		case authenticatedContext := <-t.AcceptAuthenticatedChan: // 连接已认证
 			if authenticatedContext != nil {
 				t.Debug("连接[%v]认证成功！", authenticatedContext.Conn)
+				channelID := authenticatedContext.ClientID
 				t.ConnManager.AddConn(authenticatedContext.ClientID, authenticatedContext.Conn)
+				channel, err := t.GetChannel(channelID)
+				if err != nil {
+					t.Error("获取管道[%d]失败！-> %v", channelID, err)
+					continue
+				}
+				if channel == nil {
+					t.Error("管道[%d]不存在！", channelID)
+					continue
+				}
 				// 开始推送离线消息
 				t.waitGroup.Wrap(func() {
 					t.pushOfflineMsg(authenticatedContext.ClientID,authenticatedContext.Conn)
@@ -178,16 +190,22 @@ exit:
 }
 
 // GetChannel 通过[channelID]获取管道信息
-func (t *TGO) GetChannel(channelID uint64) (*Channel, error) {
+func (t *TGO) GetChannel(channelID uint64) (Channel, error) {
+	defer  t.Unlock()
+	t.Lock()
 	channel, ok := t.channelMap[channelID]
-	var err error
 	if !ok {
-		channel, err = t.Storage.GetChannel(channelID)
+		channelModel, err := t.Storage.GetChannel(channelID)
 		if err != nil {
 			return nil, err
 		}
-		if channel != nil {
-			t.channelMap[channelID] = channel
+		if channelModel != nil {
+			channel = channelModel.NewChannel(t.ctx)
+			t.channelMap[channelID] =channel
+			if err!=nil {
+				return nil,err
+			}
+			return channel,nil
 		}
 	}
 	return channel, nil
@@ -211,9 +229,9 @@ func (t *TGO) pushOfflineMsg(clientID uint64, conn Conn) {
 	startPushTimeMill := time.Now().UnixNano()/(1000*1000) // 开始push时间 毫秒
 
 	for currentPageIndex = 1;currentPageIndex<maxPageIndex;currentPageIndex ++ {
-		msgList, err := t.Storage.GetMsgWithChannel(channel.ChannelID, currentPageIndex, pageSize)
+		msgList, err := t.Storage.GetMsgWithChannel(channel.Model().ChannelID, currentPageIndex, pageSize)
 		if err != nil {
-			t.Error("获取管道[%d]的消息失败！-> %v", channel.ChannelID, err)
+			t.Error("获取管道[%d]的消息失败！-> %v", channel.Model().ChannelID, err)
 			return
 		}
 		for _, msg := range msgList {

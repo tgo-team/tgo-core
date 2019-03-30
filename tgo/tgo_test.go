@@ -21,7 +21,7 @@ func TestTTGO_pushOfflineMsg(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	err = tg.Storage.AddChannel(NewChannel(clientID,ChannelTypePerson,&Context{TGO:tg}))
+	err = tg.Storage.AddChannel(NewChannelModel(clientID,ChannelTypePerson))
 	if err != nil {
 		t.Error(err)
 	}
@@ -56,7 +56,7 @@ func startTGO(opts *Options) *TGO {
 type MemoryStorage struct {
 	storageMsgChan chan *MsgContext
 	channelMsgMap  map[uint64][]*Msg
-	channelMap     map[uint64]*Channel
+	channelMap     map[uint64]*ChannelModel
 	clientMap      map[uint64]*Client
 	clientChannelRelationMap  map[uint64][]uint64
 	ctx            *Context
@@ -66,7 +66,7 @@ func NewMemoryStorage(ctx *Context) *MemoryStorage {
 	return &MemoryStorage{
 		storageMsgChan: make(chan *MsgContext, 0),
 		channelMsgMap:  make(map[uint64][]*Msg),
-		channelMap:     make(map[uint64]*Channel),
+		channelMap:     make(map[uint64]*ChannelModel),
 		clientMap:      make(map[uint64]*Client),
 		clientChannelRelationMap: make(map[uint64][]uint64),
 		ctx:            ctx,
@@ -88,13 +88,12 @@ func (s *MemoryStorage) AddMsg(msgContext *MsgContext) error {
 	return nil
 }
 
-func (s *MemoryStorage) AddChannel(c *Channel) error {
+func (s *MemoryStorage) AddChannel(c *ChannelModel) error {
 	s.channelMap[c.ChannelID] = c
 	return nil
 }
-func (s *MemoryStorage) GetChannel(channelID uint64) (*Channel, error) {
+func (s *MemoryStorage) GetChannel(channelID uint64) (*ChannelModel, error) {
 	ch := s.channelMap[channelID]
-	ch.Ctx = s.ctx
 	return ch, nil
 }
 
