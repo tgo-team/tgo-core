@@ -98,14 +98,9 @@ func (c *GroupChannel) SetContext(ctx *Context) {
 
 func (c *GroupChannel) PutMsg(msg *Msg) error {
 	msgContext := NewMsgContext(msg, c.channelID)
-	select {
-	case c.Ctx.TGO.memoryMsgChan <- msgContext:
-	default:
-		c.Warn("内存消息已满，进入持久化存储！")
-		err := c.Ctx.TGO.Storage.AddMsg(msgContext)
-		if err != nil {
-			return err
-		}
+	err := c.Ctx.TGO.Storage.AddMsg(msgContext)
+	if err != nil {
+		return err
 	}
 	atomic.AddUint64(&c.MessageCount, 1)
 	return nil
@@ -176,36 +171,7 @@ func (c *GroupChannel) String() string {
 	return fmt.Sprintf("ChannelID: %d MessageCount: %d", c.channelID, c.MessageCount)
 }
 
-// ---------- log --------------
 
-func (c *GroupChannel) Info(f string, args ...interface{}) {
-	c.Ctx.TGO.GetOpts().Log.Info(fmt.Sprintf("%s[%d] -> ", c.getLogPrefix(), c.channelID)+f, args...)
-	return
-}
-
-func (c *GroupChannel) Error(f string, args ...interface{}) {
-	c.Ctx.TGO.GetOpts().Log.Error(fmt.Sprintf("%s[%d] -> ", c.getLogPrefix(), c.channelID)+f, args...)
-	return
-}
-
-func (c *GroupChannel) Debug(f string, args ...interface{}) {
-	c.Ctx.TGO.GetOpts().Log.Debug(fmt.Sprintf("%s[%d] -> ", c.getLogPrefix(), c.channelID)+f, args...)
-	return
-}
-
-func (c *GroupChannel) Warn(f string, args ...interface{}) {
-	c.Ctx.TGO.GetOpts().Log.Warn(fmt.Sprintf("%s[%d] -> ", c.getLogPrefix(), c.channelID)+f, args...)
-	return
-}
-
-func (c *GroupChannel) Fatal(f string, args ...interface{}) {
-	c.Ctx.TGO.GetOpts().Log.Fatal(fmt.Sprintf("%s[%d] -> ", c.getLogPrefix(), c.channelID)+f, args...)
-	return
-}
-
-func (c *GroupChannel) getLogPrefix() string {
-	return "【Chanel-Group】"
-}
 
 type PersonChannel struct {
 	channelID    uint64
@@ -249,14 +215,9 @@ func (c *PersonChannel) initPQ() {
 
 func (c *PersonChannel) PutMsg(msg *Msg) error {
 	msgContext := NewMsgContext(msg, c.channelID)
-	select {
-	case c.Ctx.TGO.memoryMsgChan <- msgContext:
-	default:
-		c.Warn("内存消息已满，进入持久化存储！")
-		err := c.Ctx.TGO.Storage.AddMsg(msgContext)
-		if err != nil {
-			return err
-		}
+	err := c.Ctx.TGO.Storage.AddMsg(msgContext)
+	if err != nil {
+		return err
 	}
 	atomic.AddUint64(&c.MessageCount, 1)
 	return nil
@@ -336,6 +297,35 @@ func (c *PersonChannel) String() string {
 }
 
 // ---------- log --------------
+
+func (c *GroupChannel) Info(f string, args ...interface{}) {
+	c.Ctx.TGO.GetOpts().Log.Info(fmt.Sprintf("%s[%d] -> ", c.getLogPrefix(), c.channelID)+f, args...)
+	return
+}
+
+func (c *GroupChannel) Error(f string, args ...interface{}) {
+	c.Ctx.TGO.GetOpts().Log.Error(fmt.Sprintf("%s[%d] -> ", c.getLogPrefix(), c.channelID)+f, args...)
+	return
+}
+
+func (c *GroupChannel) Debug(f string, args ...interface{}) {
+	c.Ctx.TGO.GetOpts().Log.Debug(fmt.Sprintf("%s[%d] -> ", c.getLogPrefix(), c.channelID)+f, args...)
+	return
+}
+
+func (c *GroupChannel) Warn(f string, args ...interface{}) {
+	c.Ctx.TGO.GetOpts().Log.Warn(fmt.Sprintf("%s[%d] -> ", c.getLogPrefix(), c.channelID)+f, args...)
+	return
+}
+
+func (c *GroupChannel) Fatal(f string, args ...interface{}) {
+	c.Ctx.TGO.GetOpts().Log.Fatal(fmt.Sprintf("%s[%d] -> ", c.getLogPrefix(), c.channelID)+f, args...)
+	return
+}
+
+func (c *GroupChannel) getLogPrefix() string {
+	return "【Chanel-Group】"
+}
 
 func (c *PersonChannel) Info(f string, args ...interface{}) {
 	c.Ctx.TGO.GetOpts().Log.Info(fmt.Sprintf("%s[%d] -> ", c.getLogPrefix(), c.channelID)+f, args...)

@@ -16,7 +16,6 @@ type TGO struct {
 	Storage                 Storage // storage msg
 	monitor                 Monitor // Monitor
 	channelMap              map[uint64]Channel
-	memoryMsgChan           chan *MsgContext
 	AcceptConnChan          chan Conn // 接受连接
 	AcceptPacketChan        chan *PacketContext
 	AcceptConnExitChan      chan Conn                  // 接受连接退出
@@ -29,7 +28,6 @@ func New(opts *Options) *TGO {
 	tg := &TGO{
 		exitChan:                make(chan int, 0),
 		channelMap:              map[uint64]Channel{},
-		memoryMsgChan:           make(chan *MsgContext, opts.MemQueueSize),
 		AcceptPacketChan:        make(chan *PacketContext, 1024),
 		AcceptConnChan:          make(chan Conn, 1024),
 		AcceptConnExitChan:      make(chan Conn, 1024),
@@ -157,24 +155,12 @@ func (t *TGO) msgLoop() {
 				}
 				channel.DeliveryMsgChan() <- msgContext.msg
 			}
-		case msgContext := <-t.memoryMsgChan:
-			if msgContext != nil {
-				channel, err := t.GetChannel(msgContext.ChannelID())
-				if err != nil {
-					t.Error("获取管道[%d]失败！-> %v", msgContext.ChannelID(), err)
-					continue
-				}
-				if channel == nil {
-					t.Error("管道[%d]不存在！", msgContext.ChannelID())
-					continue
-				}
-				channel.DeliveryMsgChan() <- msgContext.msg
-			}
 		case conn := <-t.AcceptConnExitChan: // 连接退出
 			if conn != nil {
 				t.Debug("连接[%v]退出！", conn)
 				cn, ok := conn.(StatefulConn)
 				if ok {
+					Online(cn.GetID(),OFFLINE)
 					t.ConnManager.RemoveConn(cn.GetID())
 				}
 

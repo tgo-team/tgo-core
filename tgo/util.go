@@ -10,6 +10,9 @@ func init()  {
 	cuckooFilter = cuckoo.NewFilter(10000)
 }
 
+const ONLINE  = 1
+const OFFLINE  = 0
+
 // 设置客户端是否上线
 func Online(clientID uint64,online int) bool  {
 	if online==1 {
