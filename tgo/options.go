@@ -1,6 +1,9 @@
 package tgo
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type Options struct {
 	LogLevel             LogLevel
@@ -30,6 +33,7 @@ func NewOptions() *Options {
 		MaxBytesPerFile:      100 * 1024 * 1024,
 		MsgTimeout:           60 * time.Second,
 		MaxMsgSize:           1024 * 1024,
+		Log:                  &DefaultLog{},
 		MemQueueSize:         10000,
 		SyncEvery:            2500,
 		SyncTimeout:          2 * time.Second,
@@ -43,4 +47,23 @@ func NewOptions() *Options {
 		TestOn:               false,
 		Pro:                  NewProtocol("mqtt-im"),
 	}
+}
+
+type DefaultLog struct {
+}
+
+func (lg *DefaultLog) Info(format string, a ...interface{}) {
+	fmt.Println(fmt.Sprintf(fmt.Sprintf("[Info]%s", format), a...))
+}
+func (lg *DefaultLog) Error(format string, a ...interface{}) {
+	fmt.Println(fmt.Sprintf(fmt.Sprintf("[Error]%s", format), a...))
+}
+func (lg *DefaultLog) Debug(format string, a ...interface{}) {
+	fmt.Println(fmt.Sprintf(fmt.Sprintf("[Debug]%s", format), a...))
+}
+func (lg *DefaultLog) Warn(format string, a ...interface{}) {
+	fmt.Println(fmt.Sprintf(fmt.Sprintf("[Warn]%s", format), a...))
+}
+func (lg *DefaultLog) Fatal(format string, a ...interface{}) {
+	fmt.Println(fmt.Sprintf(fmt.Sprintf("[Fatal]%s", format), a...))
 }

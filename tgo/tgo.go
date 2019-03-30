@@ -3,6 +3,7 @@ package tgo
 import (
 	"github.com/tgo-team/tgo-core/tgo/packets"
 	"sync/atomic"
+	"time"
 )
 
 type TGO struct {
@@ -33,8 +34,10 @@ func New(opts *Options) *TGO {
 		AcceptAuthenticatedChan: make(chan *AuthenticatedContext, 1024),
 		ConnManager:             newConnManager(),
 	}
-	if opts.Log == nil {
-		opts.Log = NewLog(opts.LogLevel)
+
+	lg := NewLog(opts.LogLevel)
+	if lg != nil {
+		opts.Log =lg
 	}
 	//if opts.Monitor == nil {
 	//	opts.Monitor = tg
@@ -117,6 +120,10 @@ func (t *TGO) msgLoop() {
 			if authenticatedContext != nil {
 				t.Debug("连接[%v]认证成功！", authenticatedContext.Conn)
 				t.ConnManager.AddConn(authenticatedContext.ClientID, authenticatedContext.Conn)
+				// 开始推送离线消息
+				t.waitGroup.Wrap(func() {
+					t.pushOfflineMsg(authenticatedContext.ClientID,authenticatedContext.Conn)
+				})
 			}
 		case packetContext := <-t.AcceptPacketChan: // 接受到包请求
 			if packetContext != nil {
@@ -136,11 +143,7 @@ func (t *TGO) msgLoop() {
 					t.Error("管道[%d]不存在！", msgContext.ChannelID())
 					continue
 				}
-				t.waitGroup.Add(1)
-				go func(msgContext *MsgContext) {
-					channel.DeliveryMsg(msgContext)
-					t.waitGroup.Done()
-				}(msgContext)
+				channel.DeliveryMsgChan() <- msgContext.msg
 			}
 		case msgContext := <-t.memoryMsgChan:
 			if msgContext != nil {
@@ -153,12 +156,7 @@ func (t *TGO) msgLoop() {
 					t.Error("管道[%d]不存在！", msgContext.ChannelID())
 					continue
 				}
-
-				t.waitGroup.Add(1)
-				go func(msgContext *MsgContext) {
-					channel.DeliveryMsg(msgContext)
-					t.waitGroup.Done()
-				}(msgContext)
+				channel.DeliveryMsgChan() <- msgContext.msg
 			}
 		case conn := <-t.AcceptConnExitChan: // 连接退出
 			if conn != nil {
@@ -173,6 +171,7 @@ func (t *TGO) msgLoop() {
 			goto exit
 
 		}
+		println("test---")
 	}
 exit:
 	t.Debug("停止收取消息。")
@@ -195,9 +194,40 @@ func (t *TGO) GetChannel(channelID uint64) (*Channel, error) {
 }
 
 // pushOfflineMsg 推送离线消息
-func (t *TGO) pushOfflineMsg(clientID uint64,conn Conn)  {
-	//channel,err := t.GetChannel(clientID)
-	//if err!=nil {
-	//	t.Error("查询连接[%v]的Channel失败！-> %v",conn,err)
-	//}
+func (t *TGO) pushOfflineMsg(clientID uint64, conn Conn) {
+	channel, err := t.GetChannel(clientID)
+	if err != nil {
+		t.Error("查询连接[%v]的Channel失败！-> %v", conn, err)
+		return
+	}
+	if channel == nil {
+		t.Warn("客户端[%v]对应的管道不存在！", clientID)
+		return
+	}
+
+	var currentPageIndex int64= 1 // 当前页码
+	var pageSize int64 = 100 // 每页数据量
+	var maxPageIndex int64= 1000 // 最大页码数（TODO: 超过最大页码不管有没有推送完离线消息都终止，所以最大页码下标尽量设置大点）
+	startPushTimeMill := time.Now().UnixNano()/(1000*1000) // 开始push时间 毫秒
+
+	for currentPageIndex = 1;currentPageIndex<maxPageIndex;currentPageIndex ++ {
+		msgList, err := t.Storage.GetMsgWithChannel(channel.ChannelID, currentPageIndex, pageSize)
+		if err != nil {
+			t.Error("获取管道[%d]的消息失败！-> %v", channel.ChannelID, err)
+			return
+		}
+		for _, msg := range msgList {
+			if msg.Timestamp > startPushTimeMill { // 如果消息时间大于开始push时间，说明消息是在线消息（因为只有连接后才会开始push）所以退出离线推送
+				goto exit
+			}
+			channel.DeliveryMsgChan() <- msg
+		}
+		if int64(len(msgList)) < pageSize {
+			goto exit
+		}
+	}
+
+	exit:
+		t.Debug("客户端[%v]的离线消息推送完成！",clientID)
+
 }

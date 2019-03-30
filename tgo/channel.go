@@ -18,6 +18,7 @@ const (
 	ChannelTypeGroup                     // 群组管道
 )
 
+
 type Channel struct {
 	ChannelID    uint64
 	ChannelType  ChannelType
@@ -30,6 +31,9 @@ type Channel struct {
 	inFlightMutex    sync.Mutex
 
 	connMap map[uint64]*Conn
+
+	deliveryMsgChan chan *Msg
+	waitGroup               WaitGroupWrapper
 }
 
 func NewChannel(channelID uint64, channelType ChannelType, ctx *Context) *Channel {
@@ -38,7 +42,11 @@ func NewChannel(channelID uint64, channelType ChannelType, ctx *Context) *Channe
 		ChannelID:   channelID,
 		ChannelType: channelType,
 		Ctx:         ctx,
+		deliveryMsgChan: make(chan *Msg,1024),
 	}
+	c.waitGroup.Wrap(func() {
+		c.startDeliveryMsg()
+	})
 	//c.initPQ()
 	return c
 }
@@ -66,20 +74,33 @@ func (c *Channel) PutMsg(msg *Msg) error {
 	return nil
 }
 
+func (c *Channel) DeliveryMsgChan() chan *Msg  {
+	return c.deliveryMsgChan
+}
+
 // DeliveryMsg 投递消息
-func (c *Channel) DeliveryMsg(msgCtx *MsgContext)  {
-	c.Debug("开始投递消息[%d]！",msgCtx.Msg().MessageID)
-	clientIDs,err := c.Ctx.TGO.Storage.GetClientIDs(msgCtx.channelID)
+func (c *Channel) startDeliveryMsg()  {
+	for {
+		select {
+		case msg :=<- c.deliveryMsgChan:
+			c.deliveryMsg(msg)
+		}
+	}
+}
+
+func (c *Channel) deliveryMsg(msg *Msg)  {
+	c.Debug("开始投递消息[%d]！",msg.MessageID)
+	clientIDs,err := c.Ctx.TGO.Storage.GetClientIDs(c.ChannelID)
 	if err!=nil {
-		c.Error("获取管道[%d]的客户端ID集合失败！ -> %v",msgCtx.channelID,err)
+		c.Error("获取管道[%d]的客户端ID集合失败！ -> %v",c.ChannelID,err)
 		return
 	}
 	if clientIDs==nil || len(clientIDs)<=0 {
-		c.Warn("Channel[%d]里没有客户端！",msgCtx.channelID)
+		c.Warn("Channel[%d]里没有客户端！",c.ChannelID)
 		return
 	}
 	for _,clientID :=range clientIDs {
-		if clientID == msgCtx.Msg().From { // 不发送给自己
+		if clientID == msg.From { // 不发送给自己
 			continue
 		}
 		if clientID == c.ChannelID && c.ChannelType == ChannelTypePerson { // 如果Channel是当前用户的将直接发送消息给用户
@@ -87,18 +108,20 @@ func (c *Channel) DeliveryMsg(msgCtx *MsgContext)  {
 			if online {
 				conn := c.Ctx.TGO.ConnManager.GetConn(clientID)
 				if conn!=nil {
-					msgPacket := packets.NewMessagePacket(msgCtx.msg.MessageID,msgCtx.channelID,msgCtx.msg.Payload)
-					msgPacket.From = msgCtx.Msg().From
+					msgPacket := packets.NewMessagePacket(msg.MessageID,c.ChannelID,msg.Payload)
+					msgPacket.From = msg.From
 					msgPacketData,err := c.Ctx.TGO.GetOpts().Pro.EncodePacket(msgPacket)
 					if err!=nil {
-						c.Error("编码消息[%d]数据失败！-> %v",msgCtx.msg.MessageID,err)
+						c.Error("编码消息[%d]数据失败！-> %v",msg.MessageID,err)
 						continue
 					}
 					_,err = conn.Write(msgPacketData)
 					if err!=nil {
-						c.Error("写入消息[%d]数据失败！-> %v",msgCtx.msg.MessageID,err)
+						c.Error("写入消息[%d]数据失败！-> %v",msg.MessageID,err)
 						continue
 					}
+				}else{
+					c.Warn("客户端[%d]已是上线状态，但是没有找到客户端的连接！",clientID)
 				}
 			}
 		}else{ // 如果Channel不是当前用户的，将消息存到用户对应的管道内
@@ -111,15 +134,14 @@ func (c *Channel) DeliveryMsg(msgCtx *MsgContext)  {
 				c.Warn("没有查询到通道Channel[%d]！",clientID)
 				continue
 			}
-			err = personChannel.PutMsg(msgCtx.Msg())
+			err = personChannel.PutMsg(msg)
 			//TODO PutMsg 发生错误 怎么处理 (暂时不考虑，后面可以进行重新同步之类的反正消息是收到了存储到了管道内，只是没下发到用户的管道内)
 			// TODO 出现这种情况会出现客户端丢消息情况
 			if err!=nil {
-				c.Warn("将消息[%d]存放到用户[%d]的管道[%d]失败！-> %v",msgCtx.Msg().MessageID,clientID,msgCtx.ChannelID(),err)
+				c.Warn("将消息[%d]存放到用户[%d]的管道[%d]失败！-> %v",msg.MessageID,clientID,c.ChannelID,err)
 			}
 		}
 	}
-
 }
 
 func (c *Channel) StartInFlightTimeout(msg *Msg, clientID int64, timeout time.Duration) error {
