@@ -160,7 +160,6 @@ func (t *TGO) msgLoop() {
 				t.Debug("连接[%v]退出！", conn)
 				cn, ok := conn.(StatefulConn)
 				if ok {
-					Online(cn.GetID(),OFFLINE)
 					t.ConnManager.RemoveConn(cn.GetID())
 				}
 

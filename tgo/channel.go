@@ -254,27 +254,22 @@ func (c *PersonChannel) deliveryMsg(msg *Msg) {
 		if clientID == msg.From { // 不发送给自己
 			continue
 		}
-		online := IsOnline(clientID)
-		if online {
-			conn := c.Ctx.TGO.ConnManager.GetConn(clientID)
-			if conn != nil {
-				msgPacket := packets.NewMessagePacket(msg.MessageID, c.channelID, msg.Payload)
-				msgPacket.From = msg.From
-				msgPacketData, err := c.Ctx.TGO.GetOpts().Pro.EncodePacket(msgPacket)
-				if err != nil {
-					c.Error("编码消息[%d]数据失败！-> %v", msg.MessageID, err)
-					continue
-				}
-				_, err = conn.Write(msgPacketData)
-				if err != nil {
-					c.Error("写入消息[%d]数据失败！-> %v", msg.MessageID, err)
-					continue
-				}
-			} else {
-				c.Warn("客户端[%d]已是上线状态，但是没有找到客户端的连接！", clientID)
+		conn := c.Ctx.TGO.ConnManager.GetConn(clientID)
+		if conn != nil {
+			msgPacket := packets.NewMessagePacket(msg.MessageID, c.channelID, msg.Payload)
+			msgPacket.From = msg.From
+			msgPacketData, err := c.Ctx.TGO.GetOpts().Pro.EncodePacket(msgPacket)
+			if err != nil {
+				c.Error("编码消息[%d]数据失败！-> %v", msg.MessageID, err)
+				continue
 			}
-		}else {
-			c.Debug("客户端[%d]没在线！",clientID)
+			_, err = conn.Write(msgPacketData)
+			if err != nil {
+				c.Error("写入消息[%d]数据失败！-> %v", msg.MessageID, err)
+				continue
+			}
+		} else {
+			c.Debug("客户端[%d]不在线！", clientID)
 		}
 	}
 }
