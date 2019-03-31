@@ -121,10 +121,14 @@ func (s *MemoryStorage) GetClient(clientID uint64) (*Client, error) {
 	return s.clientMap[clientID], nil
 }
 
-func (s *MemoryStorage) GetMsgWithChannel(channelID uint64, pageIndex int64, pageSize int64) ([]*Msg, error) {
+func (s *MemoryStorage) GetMsgInChannel(channelID uint64, pageIndex int64, pageSize int64) ([]*Msg, error) {
 	msgList := s.channelMsgMap[channelID]
 	if int64(len(msgList)) >= (pageIndex-1)*pageSize+pageSize {
 		return msgList[(pageIndex-1)*pageSize : (pageIndex-1)*pageSize+pageSize], nil
 	}
 	return msgList[(pageIndex-1)*pageSize:], nil
+}
+
+func (s *MemoryStorage) RemoveMsgInChannel(messageIDs []uint64, channelID uint64) error   {
+	return nil
 }

@@ -215,7 +215,7 @@ func (t *TGO) pushOfflineMsg(clientID uint64, conn Conn) {
 	startPushTimeMill := time.Now().UnixNano()/(1000*1000) // 开始push时间 毫秒
 
 	for currentPageIndex = 1;currentPageIndex<maxPageIndex;currentPageIndex ++ {
-		msgList, err := t.Storage.GetMsgWithChannel(channel.Model().ChannelID, currentPageIndex, pageSize)
+		msgList, err := t.Storage.GetMsgInChannel(channel.Model().ChannelID, currentPageIndex, pageSize)
 		if err != nil {
 			t.Error("获取管道[%d]的消息失败！-> %v", channel.Model().ChannelID, err)
 			return

@@ -4,7 +4,7 @@ import "fmt"
 
 type MsgackPacket struct {
 	FixedHeader
-	MessageID uint64
+	MessageIDs []uint64
 }
 
 func NewMsgackPacketWithHeader(fh FixedHeader) *MsgackPacket  {
@@ -12,10 +12,10 @@ func NewMsgackPacketWithHeader(fh FixedHeader) *MsgackPacket  {
 	m.FixedHeader = fh
 	return  m
 }
-func NewMsgackPacket(messageID uint64) *MsgackPacket {
+func NewMsgackPacket(messageIDs []uint64) *MsgackPacket {
 	m := &MsgackPacket{}
 	m.PacketType = Msgack
-	m.MessageID = messageID
+	m.MessageIDs = messageIDs
 	return m
 }
 
@@ -27,6 +27,6 @@ func (m *MsgackPacket) GetFixedHeader() FixedHeader  {
 func (m *MsgackPacket) String() string {
 	str := fmt.Sprintf("%s", m.FixedHeader)
 	str += " "
-	str += fmt.Sprintf("MessageID: %d", m.MessageID)
+	str += fmt.Sprintf("MessageIDs: %v", m.MessageIDs)
 	return str
 }

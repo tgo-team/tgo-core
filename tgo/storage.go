@@ -29,14 +29,15 @@ func (c *Client) UnmarshalBinary(data []byte) error {
 
 type Storage interface {
 	// ------ 消息操作 -----
-	AddMsg(msgContext *MsgContext) error                                                 // 保存消息
-	StorageMsgChan() chan *MsgContext                                                    // 读取消息
-	GetMsgWithChannel(channelID uint64, pageIndex int64, pageSize int64) ([]*Msg, error) // 获取管道内的消息集合(分页查询)
+	AddMsg(msgContext *MsgContext) error                                               // 保存消息
+	StorageMsgChan() chan *MsgContext                                                  // 读取消息
+	RemoveMsgInChannel(messageIDs []uint64, channelID uint64)   error                       // 移除管道里的消息
+	GetMsgInChannel(channelID uint64, pageIndex int64, pageSize int64) ([]*Msg, error) // 获取管道内的消息集合(分页查询)
 	// ------ 管道操作 -----
-	AddChannel(c *ChannelModel) error                     // 保存管道
-	GetChannel(channelID uint64) (*ChannelModel, error)   // 获取管道
-	Bind(clientID uint64, channelID uint64) error    // 绑定消费者和通道的关系
-	GetClientIDs(channelID uint64) ([]uint64, error) // 获取所属管道所有的客户端
+	AddChannel(c *ChannelModel) error                   // 保存管道
+	GetChannel(channelID uint64) (*ChannelModel, error) // 获取管道
+	Bind(clientID uint64, channelID uint64) error       // 绑定消费者和通道的关系
+	GetClientIDs(channelID uint64) ([]uint64, error)    // 获取所属管道所有的客户端
 	// ------ 客户端相关 -----
 	AddClient(c *Client) error                  // 添加客户端
 	GetClient(clientID uint64) (*Client, error) // 获取客户端
