@@ -97,8 +97,7 @@ func (c *GroupChannel) SetContext(ctx *Context) {
 }
 
 func (c *GroupChannel) PutMsg(msg *Msg) error {
-	msgContext := NewMsgContext(msg, c.channelID)
-	err := c.Ctx.TGO.Storage.AddMsg(msgContext)
+	err := c.Ctx.TGO.Storage.AddMsgInChannel(msg,c.channelID)
 	if err != nil {
 		return err
 	}
@@ -214,8 +213,7 @@ func (c *PersonChannel) initPQ() {
 }
 
 func (c *PersonChannel) PutMsg(msg *Msg) error {
-	msgContext := NewMsgContext(msg, c.channelID)
-	err := c.Ctx.TGO.Storage.AddMsg(msgContext)
+	err := c.Ctx.TGO.Storage.AddMsgInChannel(msg,c.channelID)
 	if err != nil {
 		return err
 	}

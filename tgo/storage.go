@@ -29,9 +29,9 @@ func (c *Client) UnmarshalBinary(data []byte) error {
 
 type Storage interface {
 	// ------ 消息操作 -----
-	AddMsg(msgContext *MsgContext) error                                               // 保存消息
 	StorageMsgChan() chan *MsgContext                                                  // 读取消息
-	RemoveMsgInChannel(messageIDs []uint64, channelID uint64)   error                       // 移除管道里的消息
+	AddMsgInChannel(msg *Msg, channelID uint64) error                                  // 保存消息
+	RemoveMsgInChannel(messageIDs []uint64, channelID uint64) error                    // 移除管道里的消息
 	GetMsgInChannel(channelID uint64, pageIndex int64, pageSize int64) ([]*Msg, error) // 获取管道内的消息集合(分页查询)
 	// ------ 管道操作 -----
 	AddChannel(c *ChannelModel) error                   // 保存管道

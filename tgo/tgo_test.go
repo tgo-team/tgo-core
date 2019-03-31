@@ -31,7 +31,7 @@ func TestTTGO_pushOfflineMsg(t *testing.T) {
 	}
 	s, _ := net.Pipe()
 	for i := 0; i < 999; i++ {
-		err = tg.Storage.AddMsg(NewMsgContext(NewMsg(uint64(1+i), 99, []byte("hello")), clientID))
+		err = tg.Storage.AddMsgInChannel(NewMsg(uint64(1+i), 99, []byte("hello")),clientID)
 		if err != nil {
 			t.Error(err)
 		}
@@ -77,14 +77,14 @@ func (s *MemoryStorage) StorageMsgChan() chan *MsgContext {
 	return s.storageMsgChan
 }
 
-func (s *MemoryStorage) AddMsg(msgContext *MsgContext) error {
-	msgs := s.channelMsgMap[msgContext.ChannelID()]
+func (s *MemoryStorage) AddMsgInChannel(msg *Msg, channelID uint64) error {
+	msgs := s.channelMsgMap[channelID]
 	if msgs == nil {
 		msgs = make([]*Msg, 0)
 	}
-	msgs = append(msgs, msgContext.Msg())
-	s.channelMsgMap[msgContext.ChannelID()] = msgs
-	s.storageMsgChan <- msgContext
+	msgs = append(msgs, msg)
+	s.channelMsgMap[channelID] = msgs
+	s.storageMsgChan <- NewMsgContext(msg,channelID)
 	return nil
 }
 
