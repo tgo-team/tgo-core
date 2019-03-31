@@ -273,6 +273,8 @@ func (c *PersonChannel) deliveryMsg(msg *Msg) {
 			} else {
 				c.Warn("客户端[%d]已是上线状态，但是没有找到客户端的连接！", clientID)
 			}
+		}else {
+			c.Debug("客户端[%d]没在线！",clientID)
 		}
 	}
 }
