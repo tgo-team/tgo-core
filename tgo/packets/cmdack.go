@@ -17,7 +17,7 @@ func NewCmdackPacketWithHeader(fh FixedHeader) *CmdackPacket {
 
 func NewCmdackPacket(cmd string,status uint16, payload []byte) *CmdackPacket {
 
-	return &CmdackPacket{CMD: cmd,Status:status, Payload: payload, FixedHeader: FixedHeader{PacketType: Cmd}}
+	return &CmdackPacket{CMD: cmd,Status:status, Payload: payload, FixedHeader: FixedHeader{PacketType: Cmdack}}
 }
 
 
