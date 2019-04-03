@@ -37,35 +37,21 @@ const (
 	Connack     PacketType = 2
 	Message     PacketType = 3
 	Msgack      PacketType = 4
-	Pubrec      PacketType = 5
-	Pubrel      PacketType = 6
-	Pubcomp     PacketType = 7
-	Subscribe   PacketType = 8
-	Suback      PacketType = 9
-	Unsubscribe PacketType = 10
-	Unsuback    PacketType = 11
-	Pingreq     PacketType = 12 // 心跳请求
-	Pingresp    PacketType = 13 // 心跳返回
-	Disconnect  PacketType = 14 // 断开连接
-	CMD         PacketType = 15 // 命令
+	Pingreq     PacketType = 5 // 心跳请求
+	Pingresp    PacketType = 6 // 心跳返回
+	Cmd         PacketType = 7 // 命令
+	Cmdack       PacketType = 8 // 命令回执
 )
 
 var PacketNames = map[uint8]string{
 	1:  "CONNECT",
 	2:  "CONNACK",
 	3:  "MESSAGE",
-	4:  "PUBACK",
-	5:  "PUBREC",
-	6:  "PUBREL",
-	7:  "PUBCOMP",
-	8:  "SUBSCRIBE",
-	9:  "SUBACK",
-	10: "UNSUBSCRIBE",
-	11: "UNSUBACK",
-	12: "PINGREQ",
-	13: "PINGRESP",
-	14: "DISCONNECT",
-	15: "CMD",
+	4:  "MSGACK",
+	5:  "PINGREQ",
+	6: "PINGRESP",
+	7: "CMD",
+	8: "CMDACK",
 }
 
 func BoolToByte(b bool) byte {

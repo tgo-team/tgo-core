@@ -2,7 +2,7 @@ package packets
 
 import "fmt"
 
-type CMDPacket struct {
+type CmdPacket struct {
 	FixedHeader
 	CMD       string
 	TokenFlag bool // token标识 true表示存在token false为不存在
@@ -10,25 +10,25 @@ type CMDPacket struct {
 	Payload   []byte // 消息内容
 }
 
-func NewCMDPacketWithHeader(fh FixedHeader) *CMDPacket {
-	c := &CMDPacket{}
+func NewCmdPacketWithHeader(fh FixedHeader) *CmdPacket {
+	c := &CmdPacket{}
 	c.FixedHeader = fh
 	return c
 }
 
-func NewCMDPacket(cmd string, payload []byte) *CMDPacket {
+func NewCmdPacket(cmd string, payload []byte) *CmdPacket {
 
-	return &CMDPacket{CMD: cmd, Payload: payload, FixedHeader: FixedHeader{PacketType: CMD}}
+	return &CmdPacket{CMD: cmd, Payload: payload, FixedHeader: FixedHeader{PacketType: Cmd}}
 }
 
-func (c *CMDPacket) GetFixedHeader() FixedHeader {
+func (c *CmdPacket) GetFixedHeader() FixedHeader {
 
 	return c.FixedHeader
 }
 
-func (c *CMDPacket) String() string {
+func (c *CmdPacket) String() string {
 	str := fmt.Sprintf("%s", c.FixedHeader)
 	str += " "
-	str += fmt.Sprintf("CMD: %d TokenFlag: %v Token: %v Payload:  %s", c.CMD,c.TokenFlag,c.Token, string(c.Payload))
+	str += fmt.Sprintf("CMD: %s TokenFlag: %v Token: %v Payload:  %s", c.CMD,c.TokenFlag,c.Token, string(c.Payload))
 	return str
 }

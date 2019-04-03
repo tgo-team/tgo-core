@@ -48,8 +48,8 @@ func (r *Route) Serve(m *MContext) {
 			matchFunc(m)
 		}
 		// cmd类型匹配
-		if packetType == packets.CMD {
-			cmd := m.Packet().(*packets.CMDPacket).CMD
+		if packetType == packets.Cmd {
+			cmd := m.Packet().(*packets.CmdPacket).CMD
 			cmdPath := fmt.Sprintf("cmd:%s",cmd)
 			matchFunc := r.matchHandlerMap[cmdPath]
 			if matchFunc!=nil {
@@ -108,9 +108,9 @@ func (m *MContext) Packet() packets.Packet {
 	return m.packetContext.Packet
 }
 
-// CMDPacket 获取CMD包
-func (m *MContext) CMDPacket() *packets.CMDPacket {
-	return m.packetContext.Packet.(*packets.CMDPacket)
+// CmdPacket 获取CMD包
+func (m *MContext) CmdPacket() *packets.CmdPacket {
+	return m.packetContext.Packet.(*packets.CmdPacket)
 }
 
 func (m *MContext) PacketType() packets.PacketType {
