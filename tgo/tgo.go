@@ -111,7 +111,8 @@ func (t *TGO) msgLoop() {
 				t.Error("解析连接数据失败！-> %v", err)
 				continue
 			}
-			if packet.GetFixedHeader().PacketType != packets.Connect {
+
+			if packet.GetFixedHeader().PacketType != packets.Connect && !t.GetOpts().TestOn {
 				t.Error("包类型[%d]错误！发起连接后的第一个包必须为Connect包！", packet.GetFixedHeader().PacketType)
 				continue
 			}
