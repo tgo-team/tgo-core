@@ -33,26 +33,27 @@ func (r *Route) handle(context *MContext) {
 	context.Next()
 }
 
-func (r *Route) Serve(context *MContext) {
-	context.Ctx = r.ctx
-	context.handlers = r.handlers
-	r.handle(context)
+func (r *Route) Serve(m *MContext) {
+	m.Ctx = r.ctx
+	m.handlers = r.handlers
+	r.handle(m)
 
-	if context.Packet()!=nil && !context.IsAborted(){
+	if m.Packet()!=nil && !m.IsAborted(){
 		// 包类型匹配
-		packetType := context.Packet().GetFixedHeader().PacketType
+		packetType := m.Packet().GetFixedHeader().PacketType
 		typePath := fmt.Sprintf("type:%d",packetType)
 		matchFunc := r.matchHandlerMap[typePath]
 		if matchFunc!=nil {
-			matchFunc(context)
+
+			matchFunc(m)
 		}
 		// cmd类型匹配
 		if packetType == packets.CMD {
-			cmd := context.Packet().(*packets.CMDPacket).CMD
-			cmdPath := fmt.Sprintf("cmd:%d",cmd)
+			cmd := m.Packet().(*packets.CMDPacket).CMD
+			cmdPath := fmt.Sprintf("cmd:%s",cmd)
 			matchFunc := r.matchHandlerMap[cmdPath]
 			if matchFunc!=nil {
-				matchFunc(context)
+				matchFunc(m)
 			}
 		}
 	}
@@ -84,6 +85,7 @@ var pool = sync.Pool{
 	},
 }
 
+// TODO 这里不需要pool 因为消息都是异步处理 不知道结束点在哪里 也就不知道什么时候put回对象，以后需要优化为多例的
 func GetMContext(packetContext *PacketContext) *MContext {
 	mContext := pool.Get().(*MContext)
 	mContext.reset()
