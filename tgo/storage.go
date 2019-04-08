@@ -39,6 +39,7 @@ type Storage interface {
 	Bind(clientID uint64, channelID uint64) error       // 绑定消费者和通道的关系
 	GetClientIDs(channelID uint64) ([]uint64, error)    // 获取所属管道所有的客户端
 	// ------ 客户端相关 -----
-	AddClient(c *Client) error                  // 添加客户端
-	GetClient(clientID uint64) (*Client, error) // 获取客户端
+	AddClient(c *Client) error                           // 添加客户端
+	UpdateClient(clientID uint64, password string) error // 修改客户端
+	GetClient(clientID uint64) (*Client, error)          // 获取客户端
 }
